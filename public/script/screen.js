@@ -1,12 +1,14 @@
-var devicename; // the name of this screen and specified in the URL
+'use strict';
+
+var deviceName; // the name of this screen and specified in the URL
 var imageCount = 7; // the maximum number of images available
-var clientsRef = [];
+//var clientRef = [];
 
 document.addEventListener("DOMContentLoaded", function(event) {
-    devicename = getQueryParams().name;
-    if (devicename) {
+    deviceName = getQueryParams().name;
+    if (deviceName) {
         var text = document.querySelector('#name');
-        text.textContent = devicename;
+        text.textContent = deviceName;
     }
 
     connectToServer();
@@ -46,21 +48,14 @@ function getQueryParams() {
 
 function connectToServer(){
     var socket = io();
-
-    socket.on('imageToScreen', function (index) {
-        showImage(index);
+	
+	socket.emit('addScreen', deviceName);
+	
+    socket.on('showImage', function (imageIndex) {
+		showImage(imageIndex);
     });
-    
-
-    //io.of('/').clients(function (error, clients) {
-    //    if (error) throw error;
-    //    clientsRef = clients;
-    //})
-    //for (var i = 0; i < clientsRef.length; i++)
-    //{
-    //    if (socket.id == clientsRef[i])
-    //    {
-    //        socket.emit('deviceIndex', i)
-    //    }
-    //}
+	
+	socket.on('clearImage', function() {
+		clearImage();
+	});
 }

@@ -1,6 +1,8 @@
+'use strict';
+
 var currentImage = 0; // the currently selected image
 var imageCount = 7; // the maximum number of images available
-
+var socket;
 
 function showImage (index){
     // Update selection on remote
@@ -8,8 +10,8 @@ function showImage (index){
     var images = document.querySelectorAll("img");
     document.querySelector("img.selected").classList.toggle("selected");
     images[index].classList.toggle("selected");
-
-    io().emit('image', index);
+	
+    socket.emit('imageClicked', { index: index, count: imageCount });
 }
 
 function initialiseGallery(){
@@ -24,7 +26,7 @@ function initialiseGallery(){
                 showImage(index);
             }
         })(i);
-        img.addEventListener("click",handler);
+        img.addEventListener("click", handler);
     }
 
     document.querySelector("img").classList.toggle('selected');
@@ -36,16 +38,33 @@ document.addEventListener("DOMContentLoaded", function(event) {
     document.querySelector('#toggleMenu').addEventListener("click", function(event){
         var style = document.querySelector('#menu').style;
         style.display = style.display == "none" || style.display == "" ? "block" : "none";
-
-        //io().on('deviceIndex', function (deviceIndex) {
-        //    $('#devices').append($('<li>').text('Screen' + deviceIndex)).append($('<button>Connect</button>'));
-        //});
-
     });
     connectToServer();
 });
 
-function connectToServer(){
-    var socket = io();
+function connectToServer() {
+    socket = io();
+	
+	socket.emit('addRemote');
+	
+	socket.on('screensUpdated', function(screens) {
+		var devices = $('#devices');
+		devices.empty();
+		
+		screens.forEach(function(screen, i) {
+			var button = document.createElement("button");
+			button.className += ' pure-button';
+			button.innerHTML = screen.active ? 'Disconnect' : 'Connect';
+			
+			devices.append('<li>Screen ' + screen.name + button.outerHTML + '</li>');
+			
+			var handler = (function(socketId) {
+				return function() {
+					socket.emit('toggleScreen', socketId);
+				}
+			})(screen.socketId);
+			devices[0].children[i].children[0].addEventListener("click", handler);
+		});
+	});
 }
 
