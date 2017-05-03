@@ -5,7 +5,6 @@ var app = express();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var remotes = [];
-var screens = [];
 
 app.use(express.static('public'));
 
@@ -18,26 +17,11 @@ app.use(express.static('public'));
 });*/
 
 io.on('connection', function (socket) {
-	/*io.of('/').clients(function (error, client) {
-        if (error) throw error;
-        for (var i = 0; i < clientsRef.length; i++) {
-            if (socket.id == clientsRef[i]) {
-				console.log('Screen connected: ' + socket.id + '(' + i + ')');
-            }
-        }
-    });*/
-
 	var updateRemote = function(remote) {
-		if (remote) {
-			io.to(remote.socketId).emit('screensUpdated', remote.screens);
-		}
+		io.to(remote.socketId).emit('screensUpdated', remote.screens);
 	}
 	
 	var updateScreens = function(remote) {
-		if (!remote.currentImage) {
-			return;
-		}
-		
 		var imageIndex = remote.currentImage.index;
 		remote.screens.forEach(function(screen) {
 			if (screen.active) {
@@ -47,19 +31,20 @@ io.on('connection', function (socket) {
 		});
 	}
 	
-	socket.on('addRemote', function () {
-		var remote = { socketId: socket.id, screens: [] };
-		screens.forEach(function(screen) {
-			remote.screens.push({ socketId: screen.socketId, name: screen.name });
-		});
+	socket.on('addRemote', function (image) {
+		var remote = { socketId: socket.id, screens: [], currentImage: image };
+		if (remotes[0]) {
+			remotes[0].screens.forEach(function(screen) {
+				remote.screens.push({ socketId: screen.socketId, name: screen.name, active: false });
+			});
+		}
 		remotes.push(remote);
 		updateRemote(remote);
 	});
 
 	socket.on('addScreen', function (screenName) {
-		screens.push({ socketId: socket.id, name: screenName });
 		remotes.forEach(function(remote) {
-			remote.screens.push({ socketId: socket.id, name: screenName });
+			remote.screens.push({ socketId: socket.id, name: screenName, active: false });
 			updateRemote(remote);
 		});
 	});
@@ -80,14 +65,14 @@ io.on('connection', function (socket) {
 					if (screen.socketId == socketId) {
 						// Toggle screen active
 						remotes[i].screens[j].active = !screen.active;
-
-						// If screen is not active now, clear image on it
 						if (!remotes[i].screens[j].active) {
 							io.to(screen.socketId).emit('clearImage');
 						}
 					}
 				});
-
+				
+				// Update screens
+				updateScreens(remote);
 				// Update remote to show button status (disconnect / connect)
 				updateRemote(remote);
 			}
@@ -96,20 +81,16 @@ io.on('connection', function (socket) {
 	
 	socket.on('disconnect', function () {
 		// If a remote disconnected, clear images for all screens controlled by remote
-		remotes.forEach(function(remote) {
+		remotes.forEach(function(remote, i) {
 			if (remote.socketId == socket.id) {
 				remote.screens.forEach(function(screen) {
 					io.to(screen.socketId).emit('clearImage');
 				});
+				remotes.splice(i, 1);
 			}
 		});
 		
 		// If a screen disconnected, delete screen from screens array and update view
-		screens.forEach(function(screen, i) {
-			if (screen.socketId == socket.id) {
-				screens.splice(i, 1);
-			}
-		});
 		remotes.forEach(function(remote, i) {
 			remote.screens.forEach(function(screen, j) {
 				if (screen.socketId == socket.id) {

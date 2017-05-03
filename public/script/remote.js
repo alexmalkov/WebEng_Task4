@@ -45,7 +45,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 function connectToServer() {
     socket = io();
 	
-	socket.emit('addRemote');
+	socket.emit('addRemote', { index: currentImage, count: imageCount });
 	
 	socket.on('screensUpdated', function(screens) {
 		var devices = $('#devices');
