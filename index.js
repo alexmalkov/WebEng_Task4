@@ -5,6 +5,7 @@ var app = express();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var remotes = [];
+var screens = [];
 
 app.use(express.static('public'));
 
@@ -33,18 +34,18 @@ io.on('connection', function (socket) {
 	
 	socket.on('addRemote', function (image) {
 		var remote = { socketId: socket.id, screens: [], currentImage: image };
-		if (remotes[0]) {
-			remotes[0].screens.forEach(function(screen) {
-				remote.screens.push({ socketId: screen.socketId, name: screen.name, active: false });
-			});
-		}
+		screens.forEach(function(screen) {
+			remote.screens.push({ socketId: screen.socketId, name: screen.name, active: false });
+		});
 		remotes.push(remote);
 		updateRemote(remote);
 	});
 
 	socket.on('addScreen', function (screenName) {
+		var screen = { socketId: socket.id, name: screenName, active: false };
+		screens.push(screen);
 		remotes.forEach(function(remote) {
-			remote.screens.push({ socketId: socket.id, name: screenName, active: false });
+			remote.screens.push({ socketId: screen.socketId, name: screen.name, active: false });
 			updateRemote(remote);
 		});
 	});
@@ -79,7 +80,17 @@ io.on('connection', function (socket) {
 		});
 	});
 	
-	socket.on('disconnect', function () {
+	socket.on('zoom', function(beta) {
+		remotes.forEach(function(remote, i) {
+			if (remote.socketId == socket.id) {
+				remote.screens.forEach(function(screen) {
+					io.to(screen.socketId).emit('zoom', beta);
+				});
+			}
+		});
+	});
+	
+	socket.on('disconnect', function() {
 		// If a remote disconnected, clear images for all screens controlled by remote
 		remotes.forEach(function(remote, i) {
 			if (remote.socketId == socket.id) {
@@ -91,6 +102,11 @@ io.on('connection', function (socket) {
 		});
 		
 		// If a screen disconnected, delete screen from screens array and update view
+		screens.forEach(function(screen, j) {
+			if (screen.socketId == socket.id) {
+				screens.splice(j, 1);
+			}
+		});
 		remotes.forEach(function(remote, i) {
 			remote.screens.forEach(function(screen, j) {
 				if (screen.socketId == socket.id) {

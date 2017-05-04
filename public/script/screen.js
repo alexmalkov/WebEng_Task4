@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
     connectToServer();
 });
 
-function showImage (index){
+function showImage (index) {
     var img = document.querySelector('#image');
     var msg = document.querySelector('#msg');
     if (index >= 0 && index <= imageCount){
@@ -46,16 +46,41 @@ function getQueryParams() {
 }
 
 
-function connectToServer(){
+function connectToServer() {
     var socket = io();
 	
 	socket.emit('addScreen', deviceName);
 	
-    socket.on('showImage', function (imageIndex) {
+    socket.on('showImage', function(imageIndex) {
 		showImage(imageIndex);
     });
 	
 	socket.on('clearImage', function() {
 		clearImage();
+	});
+	
+	socket.on('zoom', function(beta) {
+		/*var scale = 1;
+		if (15 <= beta && beta < 30) {
+			scale = 0.8;
+		} else if (30 <= beta && beta <45) {
+			scale = 0.6;
+		} else if (45 <= beta && beta < 60) {
+			scale = 0.4;
+		} else if (60 <= beta) {
+			scale = 0.2;
+		}*/
+		//$('#image').css({ 'transform': 'scale(' + scale + ', ' + scale + ')' });
+		var height = '100vh';
+		if (15 <= beta && beta < 30) {
+			height = '90vh';
+		} else if (30 <= beta && beta <45) {
+			height = '80vh';
+		} else if (45 <= beta && beta < 60) {
+			height = '70vh';
+		} else if (60 <= beta) {
+			height = '60vh';
+		}
+		$('#image').css({ 'height': height });
 	});
 }

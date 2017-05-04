@@ -3,18 +3,26 @@
 var currentImage = 0; // the currently selected image
 var imageCount = 7; // the maximum number of images available
 var socket;
+var rotationRates = [];
+var eventsPerPhase = 5;
+var betaThreshold = 10;
+var inRecoilPhase = false;
 
-function showImage (index){
+function showImage(index) {
     // Update selection on remote
     currentImage = index;
-    var images = document.querySelectorAll("img");
-    document.querySelector("img.selected").classList.toggle("selected");
-    images[index].classList.toggle("selected");
-	
-    socket.emit('imageClicked', { index: index, count: imageCount });
+	showCurrentImage();
 }
 
-function initialiseGallery(){
+function showCurrentImage() {
+    var images = document.querySelectorAll("img");
+    document.querySelector("img.selected").classList.toggle("selected");
+    images[currentImage].classList.toggle("selected");
+	
+    socket.emit('imageClicked', { index: currentImage, count: imageCount });
+}
+
+function initialiseGallery() {
     var container = document.querySelector('#gallery');
     var i, img;
     for (i = 0; i < imageCount; i++) {
@@ -68,3 +76,43 @@ function connectToServer() {
 	});
 }
 
+if (window.DeviceMotionEvent) {
+	window.addEventListener('devicemotion', function(eventData) {
+		rotationRates.push(eventData.rotationRate);
+		if (rotationRates.length >= eventsPerPhase) {
+			if (inRecoilPhase) {
+				inRecoilPhase = false;
+			} else {
+				for (var i = 0; i < rotationRates.length; i++) {
+					let beta = rotationRates[i].beta;
+					if (Math.abs(beta) > betaThreshold) {
+						inRecoilPhase = true;
+						if (beta > betaThreshold) {
+							showNextImage();
+						} else if (beta < -betaThreshold) {
+							showPreviousImage();
+						}
+						break;
+					}
+				}
+			}
+			rotationRates = [];
+		}
+  }, false);
+}
+
+function showPreviousImage() {
+	currentImage = (currentImage - 1 + imageCount) % imageCount;
+	showCurrentImage();
+}
+
+function showNextImage() {
+	currentImage = (currentImage + 1 + imageCount) % imageCount;
+	showCurrentImage();
+}
+
+if (window.DeviceOrientationEvent) {
+	window.addEventListener('deviceorientation', function(eventData) {
+    	socket.emit('zoom', eventData.beta);
+	}, false);
+}
